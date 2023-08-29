@@ -1,0 +1,219 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+    <style>
+        body {
+            padding: 100px;
+            width: 1000px;
+            margin: auto;
+            text-align: left;
+            font-weight: 300;
+            font-family: 'Open Sans', sans-serif;
+            color: #121212;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+    </style>
+    <title>CS 184 Mesh Editor</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+    <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
+    <h1 align="middle">Project 2: Mesh Editor</h1>
+    <h2 align="middle">Jacob Hsiung, CS184-22</h2>
+
+    <br><br>
+
+    <div>
+
+        <h2 align="middle">Overview</h2>
+        <p>
+            The main topic of this project is meshes. Before directly dealing with meshes, we start with drawing 2D Bezier curves. Then, we used what we implemented in 2D and apply it to higher demensions to get Bezier surface.
+            After that, we are ready to deal with meshes. Meshes are representd using HalfEdge class. To begin with, I implemented a way to calculate area-weighted vertex normals to achieve smoother shading. Secondly, we implement flipEdge and splitEdgte to perform edge-flipping and edge-flipping.
+            With these 2 functions, we can then apply upsampling by loop subdivision.
+        </p>
+
+        <h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+        <h3 align="middle">Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
+
+        <p>
+            de Casteljau's algorithm describes the process of reducing a set of vertices using linear interpolation with a parameter t. In each iteration, we reduces the number of vertices by 1 until we are only left with 1 vertices. We then
+            draw a cruves passing through the last point. Using this algorithm, I implemented evaluateStep, which calculate the result of the set of vertices after 1 step.
+        </p>
+
+        <div align="middle">
+            <table style="width=100%">
+                <tr>
+                    <td>
+                        <img src="html/Bezier_curve1.png" align="middle" width="400px" />
+                        <figcaption align="middle">Step One</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/Bezier_curve2.png" align="middle" width="400px" />
+                        <figcaption align="middle">Step Two</figcaption>
+                    </td>
+                </tr>
+                <br />
+                <tr>
+                    <td>
+                        <img src="html/Bezier_curve3.png" align="middle" width="400px" />
+                        <figcaption align="middle">Step Three</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/Bezier_curve4.png" align="middle" width="400px" />
+                        <figcaption align="middle">Step Four</figcaption>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <img src="html/Bezier_curve5.png" align="middle" width="400px" />
+                        <figcaption align="middle">Step Five</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/Bezier_curve6.png" align="middle" width="400px" />
+                        <figcaption align="middle">Different t and points</figcaption>
+                    </td>
+                </tr>
+                <br />
+            </table>
+        </div>
+
+
+        <h3 align="middle">Part 2: Bezier surfaces with separable 1D de Casteljau subdivision</h3>
+        <p>
+            The implementation of Bezier surfaces can be seperated into three functinons: evaluateStep, evaluate1D, and evaluate. The evaluateStep function is exactly the same as the case in lower dimension, but we need to change the class to Vector3D.
+            Each call to the function performs one step of de Castejau algorithm. The evaluate1D function repeatedly calls evaluateStep until there is only 1 point left. We can call evaluate1D on every row of the surface, so the surface will be reduced
+            to only several points, each point representing a row. Last but not least, the evaluate function calls evaluate1D and passes these set of points as argument to obtain a single point.
+        </p>
+
+        <div align="middle">
+            <table style="width=100%">
+                <img src="html/teapot.png" align="middle" width="400px" />
+                <figcaption align="middle">Teapot</figcaption>
+            </table>
+        </div>
+
+        <h2 align="middle">Section II: Sampling</h2>
+
+        <h3 align="middle">Part 3: Average normals for half-edge meshes</h3>
+        <p>
+            Taking advantage of the HalfEdge mesh data structure, we can traverse through all adjacent faces easily. Since the magnitude of the cross product is proportional to the area of the face, we can just simply add up all the normal vectors of the adjacent faces. At the end,
+            we only need to normalize the sum and that would be our average normals.
+        </p>
+        <div align="middle">
+            <table style="width=100%">
+                <tr>
+                    <td>
+                        <img src="html/flat_shadding.png" align="middle" width="400px" />
+                        <figcaption align="middle">Flat Shading</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/teapot_nothing.png" align="middle" width="400px" />
+                        <figcaption align="middle">Phong Shading</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p>We can clearly see the difference between the two shading method. One provide a smoother shading while another is a little bulky.</p>
+
+        <h3 align="middle">Part 4: Half-edge flip</h3>
+        <p>
+            The implementation of splitEdge may seem a little intimidating at the first glance, but it is actually rather simple(if everything was set correctly from the beginnig). I use the recommended method on the project spec page. Firstly, I draw out two traingles sharing an edge and clearly label the faces, halfedges, and vertices. Then, I draw out the resulting triangles after edge-flipping with everything labeled.
+            Lastly, I go through every faces, vertices, edges, and halfedges, and set the correct paramteres using setNeighbors.
+        </p>
+        <div align="middle">
+            <table style="width=100%">
+                <tr>
+                    <td>
+                        <img src="html/teapot_nothing.png" align="middle" width="400px" />
+                        <figcaption align="middle">No Flipping</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/teapot_flip.png" align="middle" width="400px" />
+                        <figcaption align="middle">Flipped</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p>One interesting way to check the logic of your code is that, the everything should remain the same if you flip an edge twice. The everything here includes not just the appearance, but also the variables in the data structure. This logic is very useful to check if every pointer was set correctly.</p>
+        <h3 align="middle">Part 5: Half-edge split</h3>
+        <p>
+            Splitting edges is slightly more complicated then flipping in that we are not only reassigning varaible, we are also adding new elements to the mesh. I start by creating all the elements that need to be added to the mesh. Then, I calculate the midpoint and assign its halfedge.
+            Then, I use the setneighbors function to assign correct value to all the halfedges. Lastly, I updated the halfedges of all the vertices, faces, and edges.
+        </p>
+        <div align="middle">
+            <table style="width=100%">
+                <tr>
+                    <td>
+                        <img src="html/teapot_nothing.png" align="middle" width="350px" />
+                        <figcaption align="middle">No Splitting</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/teapot_split.png" align="middle" width="350px" />
+                        <figcaption align="middle">Split</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/teapot_flip_split.png" align="middle" width="350px" />
+                        <figcaption align="middle">Flipped and Split</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p> There is a really interesting bug. When I was assigning the the new position to the midpoints using midpoint->position = (v0->position + v1->position) / 2.0. This line of code was skipped when compiling. I was stuck on this for hours, but then when I deleted the entire block of code and retyped the exact same code, everything worked. I'm still not able to figure out what is the cause of the bug </p>
+        <h3 align="middle">Part 6: Loop subdivision for mesh upsampling</h3>
+        <p>
+            The implementation of Loop subdivision can be seperated into 5 loops. The first loop iterated through all the edges and calculate the newPosition using the given formula. The second for loop then iterates through all the vertices and calculate the newPosition of these old vertices. The thrid while loop iterates thorugh all the edges again and apply splitEdge to all the edges and assign the precalculate position to the vertex returned.
+            The fourth for loop iterates through all the edges again and check if the edges is connecting a new vertex and a old vertex. If the condition is true, we flipp the edge. The last for loop iterates through all the vertices again, but this time, we assign the newPosition to position.
+        </p>
+        <p>
+            This part of the project was, indeed, a little tricky. The main issue I ran into was that my funcition went into infinite loop which crashes my computer. I had to restart my computer 4 times before figuring out the bug. I knew it had to do with the third loop, but I wasn't sure how I could solve it. I then realize I was adding edges while iterating over the edges. This means the boundary condition mesh.edgesEnd() will never return true.
+            I had to add a second conditions which is edge_count is smaller than edge_num. One thing to notice here was that we cannot have edge_count smaller than mesh.nEdges() beacuse mesh.nEdges() will be increasing as we splitted the edges. We would still run into infinite loop.
+        </p>
+        <div align="middle">
+            <table style="width=100%">
+                <tr>
+                    <td>
+                        <img src="html/cube_nothing.png" align="middle" width="350px" />
+                        <figcaption align="middle">No Upsampling</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/cube_upsample1x.png" align="middle" width="350px" />
+                        <figcaption align="middle">Upsampling Once</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p> By comparison, the sharp corners are still sharp after upsampling. I don't think we can smoothen the sharpt corners by pre-splitting. However, if we perform upsampling multiple times, the sharp corners and edges would disappear.</p>
+        <div align="middle">
+            <table style="width=100%">
+                <tr>
+                    <td>
+                        <img src="html/diagonalsplit_1x.png" align="middle" width="350px" />
+                        <figcaption align="middle">Upsampling Once</figcaption>
+                    </td>
+                    <td>
+                        <img src="html/split_diagonal_2x.png" align="middle" width="350px" />
+                        <figcaption align="middle">Upsampling Twice</figcaption>
+                    </td>
+                </tr>
+            </table>
+            <p> We can make the shape more symmetric by splitting all 6 diagonals of the cube. In my opinion, the reason why the the original cube becomes assymetric when upsampling is because each side of the cube is only consist of 2 triangles. When upsampling these two triangles, we are, in a way, streching the side in the two direction. But this can be alleviated if we split the diagonals. Now each side is consisted of 4 triangles, we will be streching in the four directions, and there will be no assymetric issue.</p>
+        </div>
+
+        </table>
+
+    </div>
+</body>
+
+</html>
